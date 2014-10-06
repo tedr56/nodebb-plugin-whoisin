@@ -35,13 +35,14 @@ whoisin.addAdminNavigation = function(header, callback) {
 whoisin.parse = function(postContent, callback) {
 		postContent = postContent.replace(/Who is in\?/gi, mainTemplate);
 		/*
-		app.render('lib/main', {title: 'who is in test'}, function(err, html) {
+		app.render('templates/views/main', {title: 'who is in test'}, function(err, html) {
 			if (err) {
 				console.log('ERROR rendering template: ', err);
 			}
 			console.log('rendering the whoisin template: ', html);
 		});
-		callback(null, postContent);*/
+		*/
+		callback(null, postContent);
 };
 
 function renderAdmin(req, res, next) {
