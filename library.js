@@ -4,6 +4,11 @@
 //var USER = require('../../src/user');
 
 var whoisin = {},
+		SocketPlugins = module.parent.require('./socket.io/plugins'),
+		db = module.parent.require('./database'),
+		// meta = module.parent.require('./meta'),
+		user = module.parent.require('./user'),
+		// posts = module.parent.require('./posts'),
 		mainTemplate =
 		// TODO: get from'/templates/views/main';
 		'<div class="whoisin row">' +
@@ -18,6 +23,11 @@ whoisin.init = function(app, middleware, controllers, callback) {
 	// Just add the buildHeader middleware to your route and NodeBB will take care of everything for you.
 	app.get('/admin/plugins/whoisin', middleware.admin.buildHeader, renderAdmin);
 	app.get('/api/admin/plugins/whoisin', renderAdmin);
+
+	SocketPlugins.whoisin = {
+		commit: whoisin.commit,
+		load: whoisin.load
+	};
 
 	callback();
 };
@@ -34,16 +44,51 @@ whoisin.addAdminNavigation = function(header, callback) {
 
 whoisin.parse = function(postContent, callback) {
 		postContent = postContent.replace(/Who is in\?/gi, mainTemplate);
-		/*
-		app.render('templates/views/main', {title: 'who is in test'}, function(err, html) {
-			if (err) {
-				console.log('ERROR rendering template: ', err);
-			}
-			console.log('rendering the whoisin template: ', html);
-		});
-		*/
 		callback(null, postContent);
 };
+
+whoisin.commit = function(socket, data, callback) {
+	if (socket.hasOwnProperty('uid') && socket.uid > 0) {
+		var topicid = data.url.match("topic/([0-9]*)")[1];
+		db.getObject('post-' + topicid + '-whoisin_participants', function(err, whoisin_participants) {
+			if (err) {
+				console.log('whoisin plugin: noone is in');
+			}
+			whoisin_participants[socket.uid] = {
+				isin: true,
+				timestamp: new Date()
+			};
+			db.setObject('post-' + topicid + '-whoisin_participants', whoisin_participants , function(err){
+				if (err) {
+					console.log('Whoisin Plugin: Error saving to db, ', err);
+				} else {
+					console.log('saved to db: ', JSON.stringify(whoisin_participants));
+					callback(null, "success");
+				}
+			});
+		});
+	} else {
+		callback(new Error('not-logged-in'));
+	}
+}
+
+whoisin.load = function(socket, data, callback) {
+	var topicid = data.url.match("topic/([0-9]*)")[1];
+	db.getObject('post-' + topicid + '-whoisin_participants', function(err, data) {
+		if (err) {
+			console.log('whoisin plugin: Error getting list of participants for topic');
+		}
+		console.log('got participant object: ', JSON.stringify(data));
+		var users_array = [];
+		for (var userid in data) {
+			users_array.push(userid);
+		}
+		console.log('got user array :-> ', users_array);
+		user.getMultipleUserFields(users_array, ['username', 'userslug', 'picture'], function(err, userData) {
+			callback(null, userData);
+		});
+	});
+}
 
 function renderAdmin(req, res, next) {
 	res.render('admin/plugins/whoisin', {});
