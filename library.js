@@ -16,13 +16,13 @@ var whoisin = {},
 		'  <button class="iamin btn btn-primary">I am in!</button>' +
 		'</div>';
 
-whoisin.init = function(app, middleware, controllers, callback) {
+whoisin.init = function(params, callback) {
 	console.log('nodebb-plugin-whoisin: loaded');
 
 	// We create two routes for every view. One API call, and the actual route itself.
 	// Just add the buildHeader middleware to your route and NodeBB will take care of everything for you.
-	app.get('/admin/plugins/whoisin', middleware.admin.buildHeader, renderAdmin);
-	app.get('/api/admin/plugins/whoisin', renderAdmin);
+	params.router.get('/admin/plugins/whoisin', params.middleware.admin.buildHeader, renderAdmin);
+	params.router.get('/api/admin/plugins/whoisin', renderAdmin);
 
 	SocketPlugins.whoisin = {
 		commit: whoisin.commit,
@@ -42,9 +42,12 @@ whoisin.addAdminNavigation = function(header, callback) {
 	callback(null, header);
 };
 
-whoisin.parse = function(postContent, callback) {
-		postContent = postContent.replace(/Who is in\?/gi, mainTemplate);
-		callback(null, postContent);
+whoisin.parse = function(data, callback) {
+        if (!data || !data.postData || !data.postData.content) {
+            return callback(null, data);
+        }
+		data.postData.content = data.postData.content.replace(/Who is in\?/gi, mainTemplate);
+		callback(null, data);
 };
 
 whoisin.commit = function(socket, data, callback) {
